@@ -5,6 +5,10 @@
 //
 
 #include "toojpeg.h"
+#include <stdio.h>
+#include <cstring>
+#include <iostream>
+#include <fstream>
 
 // - the "official" specifications: https://www.w3.org/Graphics/JPEG/itu-t81.pdf and https://www.w3.org/Graphics/JPEG/jfif3.pdf
 // - Wikipedia has a short description of the JFIF/JPEG file format: https://en.wikipedia.org/wiki/JPEG_File_Interchange_Format
@@ -248,6 +252,127 @@ void DCT(float block[8*8], uint8_t stride) // stride must be 1 (=horizontal) or 
   block5 = z7 + z2; block3 = z7 - z2;
 }
 
+////// moje
+void printFloat(int n, int i)
+{
+  
+    // Prints the binary representation
+    // of a number n up to i-bits.
+    int k;
+    int cnt = 1;
+    unsigned char ch = 0;
+    for (k = i - 1; k >= 0; k--) {
+        // ch = ch << 1;
+        // if ((n >> k) & 1)
+        //     ch |= 1;
+        // else
+        //    ch |= 0;
+        // if(cnt % 4 == 0){
+        //   printf("%X", ch);
+        //   ch = 0;
+        // }
+        // cnt++;
+        if ((n >> k) & 1)
+          printf("1");
+        else
+          printf("0");
+    }
+}
+
+typedef union {
+  
+    float f;
+    struct
+    {
+  
+        // Order is important.
+        // Here the members of the union data structure
+        // use the same memory (32 bits).
+        // The ordering is taken
+        // from the LSB to the MSB.
+        // unsigned int mantissa : 23;
+        // unsigned int exponent : 8;
+        // unsigned int sign : 1;
+        unsigned int rawF : 32;
+    } raw;
+} myfloat;
+
+// unsigned int c(unsigned int n, int size){
+//   int k;
+//   unsigned int newN = 0;
+
+//   for (k = size - 1; k >= 0; k--) {
+//       newN = newN << 1;
+//       if ((n >> k) & 1)
+//         newN |= 1;
+//       else
+//         newN |= 0;
+//   }
+//   return newN;
+// }
+
+unsigned int changeByteOrder(unsigned int n){
+  unsigned int newN = 0;
+  for(int i = 0; i < 4; i++){
+    unsigned int a = n >> i*8;
+    unsigned int b = a & 0b11111111;
+    unsigned int c = b << ((3-i) * 8);
+    newN |= c;
+  }
+  return newN;
+}
+
+// unsigned int flipNum(myfloat mf){
+
+//   int k;
+//   unsigned int newN = 0;
+
+//   unsigned int i = mf.raw.sign << 31;
+//   newN |= i;
+//   i = mf.raw.exponent << 23;
+//   newN |= i;
+//   i = mf.raw.mantissa;
+//   newN |= i;
+
+//   // //for (k = i - 1; k >= 0; k--) {
+//   // for (k = 0; k < i; k++) {
+//   //     newN = newN << 1;
+//   //     if ((n >> k) & 1)
+//   //       newN |= 1;
+//   //     else
+//   //       newN |= 0;
+//   // }
+//   return newN;
+// }
+
+void writeInFile(float *block){
+  std::ofstream f;
+  
+  f.open("./izlaz.b", std::ios::out | std::ios::binary | std::ios::app);
+  if (!f.is_open())
+  {
+      return;
+  }
+
+  auto block645 = (myfloat*) block;
+
+  unsigned int arr[8*8];
+  for(int i = 0; i < 8*8; i++){
+    arr[i] = changeByteOrder(block645[i].raw.rawF);
+    //printf("%f ", block645[i].f);
+    //if((i+1) % 8 == 0) printf("\n");
+  }
+  //printf("\n");
+  
+  f.write(reinterpret_cast<char *>(arr), 8*8*4);
+
+  f.close();
+}
+
+
+
+///// moje
+
 // run DCT, quantize and write Huffman bit codes
 int16_t encodeBlock(BitWriter& writer, float block[8][8], const float scaled[8*8], int16_t lastDC,
                     const BitCode huffmanDC[256], const BitCode huffmanAC[256], const BitCode* codewords)
@@ -255,12 +380,45 @@ int16_t encodeBlock(BitWriter& writer, float block[8][8], const float scaled[8*8
   // "linearize" the 8x8 block, treat it as a flat array of 64 floats
   auto block64 = (float*) block;
 
+  // auto block645 = (myfloat*) block; // TODO float
+
+  // printf("===================================\n");
+
+  // for(int i = 0; i < 8; i++){
+  //   //printf("0000000000000000");
+  //   for(int j = 0; j < 8; j++){
+  //     printFloat(block645[(8*i) + j].raw.rawFloat, 32);
+  //     printf(" ");
+  //   }
+  //   printf("\n");
+  // }
+  // printf("\n");
+
+  //writeInFile(block64);
+
   // DCT: rows
   for (auto offset = 0; offset < 8; offset++)
     DCT(block64 + offset*8, 1);
+
+  // writeInFile(block64);
+
+  // for(int i = 0; i < 8; i++){
+  //   printf("0000000000000000");
+  //   for(int j = 0; j < 8; j++){
+  //     printFloat(block645[(8*i) + j].raw.rawFloat, 32);
+  //     // printf(" ");
+  //   }
+  //   printf("\n");
+  // }
+  // printf("\n");
+
+  // printf("===================================\n");
+  
   // DCT: columns
   for (auto offset = 0; offset < 8; offset++)
     DCT(block64 + offset*1, 8);
+
+  writeInFile(block64);
 
   // scale
   for (auto i = 0; i < 8*8; i++)
