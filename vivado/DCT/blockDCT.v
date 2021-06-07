@@ -16,7 +16,6 @@ module blockDCT #(parameter total_width = 0,
     
     reg [total_width - 1 : 0] block88 [0:7]; // 8 redaka blocka tj. 8x8 polje pixela + routing i packet info...
     // 8 * block0 | block1 | ... | block7 | pck_no | y | x
-    reg [total_width - 1 : 0] block88Out [0:7];
     
     reg blockReceived = 'b0;
     integer counter   = 0;
@@ -99,10 +98,7 @@ module blockDCT #(parameter total_width = 0,
                 blockReceived <= 'b0;
                 writeFifo     <= 'b1;
                 sendDCT <= 'b1;
-                for(x = 0; x < 8; x = x+1) // prebaci u drugi array za van...
-                   block88Out[x] <= block88[x];
                 countProgress <= 0;
-                o_ready       <= 'b1;
             end
         end
     end
@@ -117,7 +113,7 @@ module blockDCT #(parameter total_width = 0,
         if (writeFifo && rstn && fifo_o_ready && countFifo < 8)
         begin
             fifo_i_valid <= 'b1;
-            fifo_i_data  <= block88Out[countFifo];
+            fifo_i_data  <= block88[countFifo];
             countFifo    <= countFifo + 1;
         end
         else if (countFifo == 8)
@@ -125,6 +121,8 @@ module blockDCT #(parameter total_width = 0,
             countFifo    <= 0;
             fifo_i_valid <= 'b0;
             writeFifo    <= 'b0;
+            
+            o_ready       <= 'b1; // spreman primiti kad sam sve u fifo prebacio
         end
     end
                 
@@ -152,7 +150,7 @@ module blockDCT #(parameter total_width = 0,
         end
     end
                 
-    axis_data_fifo_0 myFifo ( // kapacitet je 4 bloka... ima 32 polja po 280 bitova...
+    axis_data_fifo_0 myFifo ( // kapacitet je 2 bloka... ima 16 polja po 280 bitova...
     .s_axis_aresetn(rstn),          // input wire s_axis_aresetn
     .s_axis_aclk(clk),                // input wire s_axis_aclk
     .s_axis_tvalid(fifo_i_valid),            // input wire s_axis_tvalid

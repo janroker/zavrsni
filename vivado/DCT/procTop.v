@@ -25,7 +25,7 @@ genvar x, y;
 for (x=0;x<X;x=x+1) begin:xs
     for (y=0; y<Y; y=y+1) begin:ys
         if(x==0 & y==0)
-	    begin: instnce
+	    begin: instnce 
 				interfacePE #(.X(X),.Y(Y),.total_width(total_width),.x_size(x_size),.y_size(y_size),.pck_num(pck_num),.data_width(data_width))iPE(
 				.clk(clk),
 				.rstn(rstn),

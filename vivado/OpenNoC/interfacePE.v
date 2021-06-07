@@ -33,7 +33,7 @@ module interfacePE #(parameter X = 0,
     
     assign o_ready = 1'b1;
     
-    axis_data_fifo_0 myFifo ( // kapacitet je 4 bloka... ima 32 polja po 280 bitova...
+    axis_data_fifo_0 myFifo ( // kapacitet je 2 bloka... ima 16 polja po 280 bitova...
     .s_axis_aresetn(rstn),          // input wire s_axis_aresetn
     .s_axis_aclk(clk),                // input wire s_axis_aclk
     .s_axis_tvalid(main_valid_pe),            // input wire s_axis_tvalid
@@ -55,6 +55,7 @@ module interfacePE #(parameter X = 0,
         
     scheduler #(.X(X),.Y(Y),.total_width(total_width),.x_size(x_size),.y_size(y_size),.pck_num(pck_num),.data_width(data_width))scheduler_inst(
     .clk(clk),
+    .rstn(rstn),
     //PCI - Scheduler interface ////
     .i_valid_pci(i_valid_pci),
     .i_data_pci(i_data_pci),

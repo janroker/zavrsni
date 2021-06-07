@@ -28,8 +28,8 @@ module dctOnNoCTest();
     
     initial
     begin
-        fileIN  = $fopen("D:/vivado_ws/zavrsni/zavrsni/zavrsni.srcs/sim_1/new/izlaz.b","rb");
-        fileOUT = $fopen("D:/vivado_ws/zavrsni/zavrsni/zavrsni.srcs/sim_1/new/izlaz2.b","wb");
+        fileIN  = $fopen("D:/vivado_ws/zavrsni/zavrsni2/data/izlaz.b","rb");
+        fileOUT = $fopen("D:/vivado_ws/zavrsni/zavrsni2/data/izlaz2.b","wb");
         if (fileIN == 0)
         begin
             $display("Cannot open the image fileIN");
@@ -48,9 +48,18 @@ module dctOnNoCTest();
     
     initial
     begin
-        rstn = 0;
+       rstn <= 0;
         #10;
-        rstn = 1;
+       rstn <= 1;
+    end
+    
+    integer counterIn = 0;
+    integer counterOut = 0;
+    
+    integer countClk = 0;
+    always @(posedge clk)
+    begin
+        countClk <= countClk + 1;
     end
     
     always@(posedge clk)
@@ -58,14 +67,29 @@ module dctOnNoCTest();
         if (tb_o_ready_pci & !sendDone)
         begin
             for(x=0;x<32;x=x+1) // block0 | block1 | ... | block7 | pck_no | y | x
+            begin
                 rtn1 = $fscanf(fileIN,"%c",i_data[`data_width - (x+1)*8 +: 8]);
+            end
             // $strobe("i_data %H", i_data[`total_width -1 -: `data_width]);
-            o_data         <= i_data;
-            tb_i_valid_pci <= 1'b1;
+            
+            if(rtn1 > 0)
+            begin
+               // $strobe("sending data %d", counterIn);
+                counterIn <= counterIn + 1;
+                o_data         <= i_data;
+                tb_i_valid_pci <= 1'b1;
+            end
+            
             if ($feof(fileIN))
             begin
                 $fclose(fileIN);
                 sendDone = 1'b1;
+                
+                if((counterIn) % 8 != 0)
+                begin
+                    $strobe("Each block must have 8 rows of 256 bits!");
+                    $stop;
+                end 
             end
             else
             begin
@@ -80,22 +104,25 @@ module dctOnNoCTest();
             tb_i_valid_pci <= 1'b0;
     end
     
-    integer counter = 0; /// count clocks before end...
+    
     integer y;
     always @(posedge clk)
     begin
-        if (counter < 10000 )
+        if (counterOut < counterIn)
         begin
             if (tb_o_valid_pci)
             begin
                 for(y = 0;y<32;y = y+1)
+                begin
                     $fwrite(fileOUT,"%c",tb_o_data_pci[`data_width - (y+1)*8 +: 8]);
-                counter <= 0;
+                end
+                
+                counterOut <= counterOut + 1;
             end
-            if(sendDone) counter <= counter + 1;
         end
-        else
+        else if(sendDone)
         begin
+            $strobe("DONE count clock = %d", countClk);
             $fclose(fileOUT);
             $stop;
         end
